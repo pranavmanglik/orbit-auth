@@ -18,11 +18,15 @@ configures it:
 from orbit import Application, ApplicationConfig
 from orbit.asgi import ASGIApplication
 from orbit_auth import BasicAuthenticator, BasicCredential, RoleAuthorizer
+from pydantic import SecretStr
 
 application = Application(ApplicationConfig(name="admin-service"))
-authenticator = BasicAuthenticator(
-    {"operator": BasicCredential.from_password("load-from-secret-manager")}
+admin_credential = BasicCredential.create(
+    "operator",
+    SecretStr(admin_password_from_secret_manager),
+    roles=("orbit.admin",),
 )
+authenticator = BasicAuthenticator([admin_credential])
 asgi = ASGIApplication(
     application,
     authenticator=authenticator,
@@ -52,8 +56,11 @@ lifecycle, MFA, federation, password reset, or a persistent identity store. Toke
 process-local unless the application supplies a shared store. JWKS types are contracts, not a key
 fetch or rotation service.
 
-This package is pre-alpha. It is not a production certification or a substitute for threat modeling
-and identity-provider validation.
+This is a **v0.1.0-alpha review candidate**. On CPython 3.11.14, 3.12.14, 3.13.15, and 3.14.7,
+all 103 tests, Ruff lint and format checks, strict mypy, dependency audits, and wheel/sdist builds
+pass locally. Hosted CI and provider-specific identity interoperability remain release gates. The
+alpha status is not a production certification or a substitute for threat modeling and
+identity-provider validation.
 
 ## Documentation and development
 

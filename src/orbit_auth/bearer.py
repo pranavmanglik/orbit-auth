@@ -83,8 +83,11 @@ class BearerAuthenticator:
             token = verifier(credential)
             if inspect.isawaitable(token):
                 token = await token
-        except Exception as exc:
-            raise self._invalid() from exc
+        except Exception:
+            # Provider exception text may contain tokens, endpoint responses, or other secrets.
+            # Suppress the chain as well as replacing the public error message so traceback-based
+            # logging cannot re-expose details across the authentication boundary.
+            raise self._invalid() from None
         if (
             not isinstance(token, Token)
             or token.is_expired()

@@ -13,6 +13,7 @@
 # limitations under the License.
 """Verify token validation, bearer authentication, and bounded revocation state."""
 
+import traceback
 from datetime import UTC, datetime, timedelta, tzinfo
 from types import SimpleNamespace
 
@@ -332,13 +333,19 @@ async def test_bearer_authenticator_handles_missing_headers_and_verifier_failure
     authenticator = BearerAuthenticator(lambda _: token())
     assert await authenticator.authenticate(Request("GET", "/")) is None
 
-    def failing_verifier(_: str) -> Token:
-        raise RuntimeError("provider detail must not cross the security boundary")
+    secret_marker = "provider-secret-marker"
 
-    with pytest.raises(SecurityError, match="invalid"):
+    def failing_verifier(_: str) -> Token:
+        raise RuntimeError(f"provider response contains {secret_marker}")
+
+    with pytest.raises(SecurityError, match="invalid") as captured:
         await BearerAuthenticator(failing_verifier).authenticate(
             Request("GET", "/", headers={"authorization": "Bearer credential"})
         )
+    rendered = "".join(
+        traceback.format_exception(captured.type, captured.value, captured.value.__traceback__)
+    )
+    assert secret_marker not in rendered
 
     with pytest.raises(TypeError, match="Core Headers"):
         await authenticator.authenticate(SimpleNamespace(headers={}))  # type: ignore[arg-type]
